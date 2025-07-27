@@ -1,7 +1,6 @@
 npx create-next-app@latest
 npm install -g pnpm
-pnpm install
-pnpm add formik yup react-toastify react-icons
+pnpm add formik yup react-toastify react-icons axios
 npm run dev
 
 

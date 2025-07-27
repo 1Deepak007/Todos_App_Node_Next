@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { toast } from 'react-toastify'; // Ensure you have react-toastify installed and configured in your app
+import authService from '../services/auth';
+import axios from 'axios';
 
 // Define the Yup validation schemas for both login and signup
 const loginSchema = Yup.object().shape({
@@ -37,14 +39,25 @@ const AuthForm = ({ initialMode = 'login' }) => {
   const handleSubmit = (values, { setSubmitting, resetForm }) => {
     // Simulate API call based on the current mode
     if (isLoginMode) {
-      console.log('Logging in with:', values);
-      toast.success("Login successful! Redirecting...");
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1000);
+      authService.login(values).then(() => {
+        console.log('Logging in with:', values);
+        toast.success("Login successful! Redirecting...");
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
+      }).catch((error) => {
+        console.error("Login error:", error);
+        toast.error("Login failed. Please try again.");
+      });
     } else {
-      console.log('Signing up with:', values);
-      toast.success("Account created successfully!");
+      authService.signup(values).then(() => {
+        console.log('Signing up with:', values);
+        toast.success("Signup successful! Redirecting to login...");
+        setIsLoginMode(true); // Switch to login mode after successful signup
+      }).catch((error) => {
+        console.error("Signup error:", error);
+        toast.error("Signup failed. Please try again.");
+      });
     }
 
     setTimeout(() => {
