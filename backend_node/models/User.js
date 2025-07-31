@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Task = require('./Task');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -22,8 +23,8 @@ const userSchema = new mongoose.Schema({
     select: false
   },
   profilePicture: {
-    type: String,
-    default: 'https://example.com/default-profile.jpg'
+    type: String
+    // ,default: 'https://res.cloudinary.com/dqbddypvk/image/upload/v1753532803/TODOS_APP_NODE_NEXT/igzjku9msek2ep4syfih.png'
   },
   createdAt: {
     type: Date,

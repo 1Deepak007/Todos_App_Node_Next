@@ -4,11 +4,10 @@
 import { useState, useEffect } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { toast } from 'react-toastify'; // Ensure you have react-toastify installed and configured in your app
+import { toast } from 'react-toastify';
 import authService from '../services/auth';
 import axios from 'axios';
 
-// Define the Yup validation schemas for both login and signup
 const loginSchema = Yup.object().shape({
   email: Yup.string().email('Invalid email address').required('Email is required'),
   password: Yup.string().required('Password is required').min(6, 'Password have to be at least 6 characters'),
@@ -28,7 +27,6 @@ const signupSchema = Yup.object().shape({
 const AuthForm = ({ initialMode = 'login' }) => {
   const [isLoginMode, setIsLoginMode] = useState(initialMode === 'login');
 
-  // We are using a single initial values object that contains ALL possible fields.
   const initialValues = {
     name: '',
     email: '',
@@ -37,23 +35,22 @@ const AuthForm = ({ initialMode = 'login' }) => {
   };
 
   const handleSubmit = (values, { setSubmitting, resetForm }) => {
-    // Simulate API call based on the current mode
+    //dismiss all toasts before proceeding
+    toast.dismiss();
     if (isLoginMode) {
       authService.login(values).then(() => {
-        console.log('Logging in with:', values);
         toast.success("Login successful! Redirecting...");
         setTimeout(() => {
           window.location.href = "/dashboard";
         }, 100);
       }).catch((error) => {
-        console.error("Login error:", error);
-        toast.error("Login failed. Please try again.");
+        toast.error("Login failed. Check your credentials.");
       });
     } else {
       authService.signup(values).then(() => {
-        console.log('Signing up with:', values);
         toast.success("Signup successful! Redirecting to login...");
-        setIsLoginMode(true); // Switch to login mode after successful signup
+        setIsLoginMode(true);
+        resetForm();
       }).catch((error) => {
         console.error("Signup error:", error);
         toast.error("Signup failed. Please try again.");
@@ -62,11 +59,12 @@ const AuthForm = ({ initialMode = 'login' }) => {
 
     setTimeout(() => {
       setSubmitting(false);
-      resetForm(); // Reset form after successful submission
+      if (!isLoginMode) {
+        resetForm(); 
+      }
     }, 500);
   };
 
-  // Handler for video errors
   const handleVideoError = (e) => {
     console.error("Video playback error:", e.target.error);
     if (e.target.error) {
@@ -97,7 +95,7 @@ const AuthForm = ({ initialMode = 'login' }) => {
         loop
         muted
         className="fixed inset-0 object-cover w-full h-full z-0"
-        onError={handleVideoError} // Error handler for video loading issues
+        onError={handleVideoError}
       >
         <source src="/animes/loginsignupbg.mp4" type="video/mp4" />
         Your browser does not support the video tag.
@@ -118,7 +116,9 @@ const AuthForm = ({ initialMode = 'login' }) => {
         >
           {({ isSubmitting, resetForm }) => {
             useEffect(() => {
-              resetForm();
+              if (!isLoginMode) {
+                resetForm();
+              }
             }, [isLoginMode, resetForm]);
 
             return (
@@ -207,3 +207,4 @@ const AuthForm = ({ initialMode = 'login' }) => {
 };
 
 export default AuthForm;
+

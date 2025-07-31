@@ -21,6 +21,7 @@ const DashboardPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTaskToEdit, setCurrentTaskToEdit] = useState(null); // Stores the task object being edited
   const router = useRouter();
+  const setSubmitting = true
 
   // --- Function to fetch tasks ---
   const fetchTasks = async () => {
@@ -104,7 +105,7 @@ const DashboardPage = () => {
 
 
   // --- Task Form Submission Handler (for both Create and Update) ---
-  const handleTaskFormSubmit = async (values, { setSubmitting, resetForm }) => {
+  const handleTaskFormSubmit = async (values, resetForm) => {
     try {
       let response;
       if (currentTaskToEdit) {
@@ -117,12 +118,8 @@ const DashboardPage = () => {
         toast.success("Task added successfully!");
         resetForm(); // Clear form only for new task creation
       }
-      // The onSubmitSuccess in TaskForm passes the API response.data directly
-      // which should be the updated/created task object.
-      // We don't need to call fetchTasks here if TaskForm calls onSubmitSuccess
-      // and then handleCloseModal which itself calls fetchTasks().
     } catch (err) {
-      console.error('Error submitting task:', err);
+      // console.error('Error submitting task:', err);
       toast.error(`Operation failed: ${err.response?.data?.message || err.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
@@ -176,11 +173,17 @@ const DashboardPage = () => {
           </p>
 
           {/* Task Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 mb-3  lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold text-blue-700">Total Tasks</h3>
               <p className="text-lg sm:text-xl font-bold text-blue-900 me-1">{totalTasks}</p>
             </div>
+            <div className="bg-red-200 p-4 rounded-lg shadow-sm flex justify-between items-center">
+              <h3 className="text-lg sm:text-xl font-semibold text-red-500">Incomplete</h3>
+              <p className="text-lg sm:text-xl font-bold text-red-900 me-1">{incompleteTasks}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-green-200 p-4 rounded-lg shadow-sm flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold text-green-700">Working</h3>
               <p className="text-lg sm:text-xl font-bold text-green-900 me-1">{workingTasks}</p>
@@ -192,10 +195,6 @@ const DashboardPage = () => {
             <div className="bg-lime-50 p-4 rounded-lg shadow-sm flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold text-green-700">Completed</h3>
               <p className="text-lg sm:text-xl font-bold text-green-900 me-1">{completedTasks}</p>
-            </div>
-            <div className="bg-red-200 p-4 rounded-lg shadow-sm flex justify-between items-center">
-              <h3 className="text-lg sm:text-xl font-semibold text-red-500">Incomplete</h3>
-              <p className="text-lg sm:text-xl font-bold text-red-900 me-1">{incompleteTasks}</p>
             </div>
           </div>
 
@@ -294,3 +293,4 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+

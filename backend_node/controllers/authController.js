@@ -9,7 +9,8 @@ exports.signup = async (req, res) => {
             return res.status(400).json({ success: false, message: "User already exists" });
         }
         else {
-            const user = await User.create({ name, email, password });
+            const profilePicture = "https://res.cloudinary.com/dqbddypvk/image/upload/v1753532803/TODOS_APP_NODE_NEXT/igzjku9msek2ep4syfih.png"; 
+            const user = await User.create({ name, email, password, profilePicture});
             const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
                 expiresIn: '1d'
             });

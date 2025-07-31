@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const User = require("./User");
+const User = require("./User")
 
 
 const taskSchema = new mongoose.Schema({
@@ -36,7 +36,7 @@ const taskSchema = new mongoose.Schema({
     // user _id
     user: {
         type: mongoose.Schema.ObjectId,
-        ref: User,
+        ref: 'User',
         required: true
     },
     createdAt: {

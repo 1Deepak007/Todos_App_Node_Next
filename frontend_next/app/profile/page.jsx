@@ -6,118 +6,113 @@ import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import { HiPencil } from "react-icons/hi";
 import { FaUser } from "react-icons/fa";
-
 import profileService from '../services/profile';
 
 const profileSchema = Yup.object().shape({
   name: Yup.string().required('Name is required'),
   email: Yup.string().email('Invalid email').required('Email is required'),
-})
+});
 
 const passwordSchema = Yup.object().shape({
-  currentPassword: Yup.string().required('Required'),
-  newPassword: Yup.string().min(6, 'Too short!').required('Required'),
+  currentPassword: Yup.string().required('Current password is required'),
+  newPassword: Yup.string().min(6, 'Password must be at least 6 characters').required('New password is required'),
   confirmNewPassword: Yup.string()
     .oneOf([Yup.ref('newPassword'), null], 'Passwords must match')
-    .required('Required'),
+    .required('Confirm password is required'),
 });
 
 const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState();
-  const [previewImage, setPreviewImage] = useState('./default-profile.png');
+  const [userData, setUserData] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const user = await profileService.getProfile();
-        setUserData(user);
-        setPreviewImage(user.profilePicture || './default-profile.png');
-        setLoading(false);
-      }
-      catch (error) {
-        console.error('Error fetching profile:', error);
-        toast.error('Failed to load profile.');
-        setLoading(false);
-      }
-      finally {
-        setLoading(false);
-      }
-    };
     fetchProfile();
   }, []);
 
-  const handleProfileSubmit = async (values, { setSubmitting }) => {
-    setSubmitting(true);
-    toast.dismiss();       //dismiss any previous toast notifications
-
+  const fetchProfile = async () => {
     try {
-      const updateUser = await profileService.updateProfile({
-        name: values.name,
-        email: values.email
-      });
-      setUserData(updateUser);
+      setLoading(true);
+      const response = await profileService.getProfile();
+      setUserData(response.user);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async (values, { setSubmitting }) => {
+    try {
+      const response = await profileService.updateProfile(values);
+      setUserData(response.user);
       toast.success('Profile updated successfully!');
-      setIsEditingProfile(false);  //Exit editing mode
-    }
-    catch (error) {
+      setIsEditingProfile(false);
+    } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile.', error.message);
-    }
-    finally {
+      toast.error(error.message || 'Failed to update profile.');
+    } finally {
       setSubmitting(false);
     }
   };
 
-  const handlePasswordSubmit = async (values, { setSubmitting, resetForm }) => {
-    setSubmitting(true);
-    toast.dismiss();       //dismiss any previous toast notifications
-
+  const handlePasswordSubmit = async (values, { resetForm, setSubmitting }) => {
     try {
       await profileService.updatePassword({
         currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
-        confirmNewPassword: values.confirmNewPassword
+        newPassword: values.newPassword
       });
       toast.success('Password changed successfully!');
-      resetForm();  //Reset the form after successful submission
-    }
-    catch (error) {
+      resetForm();
+    } catch (error) {
       console.error('Error changing password:', error);
-      toast.error('Failed to change password.', error.message);
-    }
-    finally {
+      toast.error(error.message || 'Failed to change password.');
+    } finally {
       setSubmitting(false);
     }
   };
 
-  const handleImageChange = (e) => {
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await profileService.deleteProfile();
+      toast.success('Account deleted successfully');
+      // Redirect to login or home page after deletion
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error(error.message || 'Failed to delete account.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return toast.error('No file selected.');
 
-      // Upload the image to the server
-      const formData = new FormData();
-      formData.append('profilePicture', file);
-
-      try {
-        toast.info('Uploading profile picture...');
-        const updatedProfile = profileService.updateProfile(formData);
-        setUserData(updatedProfile);
-        setUserData(updatedProfile);
-        setPreviewImage(updatedProfile.profilePicture || reader.result);
-        toast.success('Profile picture updated !');
-      }
-      catch (error) {
-        console.error('Error uploading profile picture:', error);
-        toast.error('Failed to upload profile picture.', error.message);
-      }
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    try {
+      const response = await profileService.updateProfile(formData, true);     // Pass true to indicate this is an image upload
+      setUserData(prev => ({ ...prev, profilePicture: response.user.profilePicture || prev.profilePicture }));
+      toast.success('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      toast.error(error.message || 'Failed to upload profile picture.');
+    } finally {
+      setIsUploading(false);
+      await fetchProfile();  // Refresh profile data after image upload
     }
   };
 
@@ -130,6 +125,8 @@ const ProfilePage = () => {
     );
   }
 
+  console.log('User Data:', userData);
+
   return (
     <>
       <Navbar />
@@ -138,28 +135,35 @@ const ProfilePage = () => {
           {/* Profile Picture */}
           <div className="flex items-center justify-center mb-8">
             <div className="relative group">
-              {previewImage && typeof previewImage === 'string' && previewImage !== './default-profile.png' ? (
-                <img
-                  src={previewImage}
-                  alt="Profile"
-                  className="rounded-full h-32 w-32 object-cover border-4 border-indigo-500"
-                  onError={(e) => {
-                    e.target.src = 'https://placehold.co/200x200/cccccc/ffffff?text=Error';
-                  }}
-                />
-              ) : (
-                <div className="rounded-full h-32 w-32 bg-gray-200 flex items-center justify-center border-4 border-indigo-500">
-                  <FaUser className="text-gray-500 text-6xl" />
-                </div>
-              )}
-              <label className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer">
-                <HiPencil className="text-white text-xl" />
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              <img
+                src={userData?.profilePicture}
+                alt="Profile"
+                className="rounded-full h-32 w-32 object-cover border-4 border-indigo-500"
+              />
+              <label className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200">
+                {
+                  isUploading ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white">
+                        <span className="sr-only">Loading...</span>
+                      </div>
+                    </div>)
+                    :
+                    (<>
+                        <HiPencil className="text-white text-xl" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                    </>)
+                }
               </label>
             </div>
           </div>
 
-          {/* Profile Information Section */}
+          {/* Profile Information */}
           <div className="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-semibold text-gray-800">Profile Information</h2>
@@ -175,7 +179,10 @@ const ProfilePage = () => {
             </div>
 
             <Formik
-              initialValues={userData}
+              initialValues={{
+                name: userData.name,
+                email: userData.email
+              }}
               validationSchema={profileSchema}
               onSubmit={handleProfileSubmit}
               enableReinitialize
@@ -185,7 +192,6 @@ const ProfilePage = () => {
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
                     <Field
-                      id="name"
                       name="name"
                       type="text"
                       disabled={!isEditingProfile}
@@ -198,7 +204,6 @@ const ProfilePage = () => {
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
                     <Field
-                      id="email"
                       name="email"
                       type="email"
                       disabled={!isEditingProfile}
@@ -213,7 +218,7 @@ const ProfilePage = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          resetForm({ values: userData });
+                          resetForm();
                           setIsEditingProfile(false);
                         }}
                         className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -234,8 +239,8 @@ const ProfilePage = () => {
             </Formik>
           </div>
 
-          {/* Change Password Section */}
-          <div className="p-6 border border-gray-200 rounded-lg shadow-sm">
+          {/* Change Password */}
+          <div className="mb-8 p-6 border border-gray-200 rounded-lg shadow-sm">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Change Password</h2>
             <Formik
               initialValues={{
@@ -253,7 +258,6 @@ const ProfilePage = () => {
                       Current Password
                     </label>
                     <Field
-                      id="currentPassword"
                       name="currentPassword"
                       type="password"
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -266,7 +270,6 @@ const ProfilePage = () => {
                       New Password
                     </label>
                     <Field
-                      id="newPassword"
                       name="newPassword"
                       type="password"
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -279,7 +282,6 @@ const ProfilePage = () => {
                       Confirm New Password
                     </label>
                     <Field
-                      id="confirmNewPassword"
                       name="confirmNewPassword"
                       type="password"
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -287,18 +289,29 @@ const ProfilePage = () => {
                     <ErrorMessage name="confirmNewPassword" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      {isSubmitting ? 'Changing...' : 'Change Password'}
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Changing...' : 'Change Password'}
+                  </button>
                 </Form>
               )}
             </Formik>
+          </div>
+
+          {/* Delete Account */}
+          <div className="p-6 border border-red-200 rounded-lg shadow-sm bg-red-50">
+            <h2 className="text-2xl font-semibold text-red-800 mb-2">Delete Account</h2>
+            <p className="text-red-600 mb-4">This action cannot be undone. All your data will be permanently deleted.</p>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete My Account'}
+            </button>
           </div>
         </div>
       </div>

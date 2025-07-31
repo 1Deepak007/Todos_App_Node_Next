@@ -1,6 +1,6 @@
 import axiosClient from "./axiosClient";
 
-export default profileService = {
+const profileService = {
     getProfile: async () => {
         try {
             const response = await axiosClient.get('/profile/');
@@ -10,9 +10,10 @@ export default profileService = {
         }
     },
 
-    updateProfile: async (data) => {
+    updateProfile: async (data, isMultipart = false) => {
         try {
-            const response = await axiosClient.patch('/profile/update', data);
+            const config = isMultipart ? { headers: { 'Content-Type': 'multipart/form-data' }} : {};
+            const response = await axiosClient.patch('/profile/update', data, config);
             return response.data;
         } catch (error) {
             throw error.response?.data?.message || error.message || 'Failed to update profile.';
@@ -20,8 +21,9 @@ export default profileService = {
     },
 
     updatePassword: async (passwordData) => { // Expects { currentPassword, newPassword, passwordConfirm }
+        // console.log('Updating password with data:', passwordData);
         try {
-            const response = await axiosClient.patch('/users/updateMyPassword', passwordData);
+            const response = await axiosClient.patch('/profile/update', passwordData);
             return response.data;
         } catch (error) {
             throw error.response?.data?.message || error.message || 'Failed to change password.';
@@ -37,3 +39,5 @@ export default profileService = {
         }
     }
 }
+
+export default profileService;

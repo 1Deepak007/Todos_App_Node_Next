@@ -1,2 +1,5 @@
 npm i bcryptjs cloudinary cookie-parser cors mongoose dotenv express jsonwebtoken multer multer-storage-cloudinary
 npm install -save-dev nodemon
+
+
+node server.js

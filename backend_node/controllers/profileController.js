@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { cloudinary } = require('../config/cloudinary');
-const Task = require('../models/task');
+const Task = require('../models/Task');
 
 exports.getProfile = async (req, res) => {
     try {
@@ -16,35 +16,47 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
     try {
-        const { name, email, profilePicture, currentPassword, newPassword } = req.params;
-        const user = await User.findById(req.user._id);
+        const { name, email, currentPassword, newPassword } = req.body;
+        
+        const user = await User.findById(req.user._id).select('+password');
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        console.log('Updating profile with data:', currentPassword,' : ', newPassword)
 
         // handle email
-        if (email && email !== user.email) {  // if email is provided and is not the same as the current email
+        if (email && email !== user.email) {
             const userExists = await User.findOne({ email });
             if (userExists) return res.status(400).json({ success: false, message: 'Email already exists' });
             user.email = email;
         }
 
         // handle name
-        if (name && name !== user.name) // if name is provided and is not the same as the current name
+        if (name && name !== user.name) 
             user.name = name;
 
         // handle profile picture
         if (req.file) {
+            // If a new file is uploaded, delete the old one if it exists
             if (user.profilePicture) {
                 const publicId = user.profilePicture.split('/').pop().split('.')[0];
                 await cloudinary.uploader.destroy(publicId);
             }
-            user.profilePicture = req.file.path;
+
+            // Upload the new file
+            const result = await cloudinary.uploader.upload(req.file.path, { folder: "TODOS_APP_NODE_NEXT" }); // Add folder for consistency
+            user.profilePicture = result.secure_url; // Store the Cloudinary URL
         }
 
-        // handle password
+        // handle update password
         if (currentPassword && newPassword) {
-            // decrypt current password and compare with new password
-            const isMatch = await user.comparePassword(currentPassword);
-            if (!isMatch) return res.status(400).json({ success: false, message: 'Incorrect current password' });
-            user.password = await bcrypt.hash(newPassword, 10);
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if (!isMatch) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+            user.password = newPassword;
+
+            console.log(currentPassword, newPassword);
         }
 
         await user.save();

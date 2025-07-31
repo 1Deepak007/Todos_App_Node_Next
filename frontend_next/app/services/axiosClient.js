@@ -10,7 +10,7 @@ const axiosClient = axios.create({
     },
 });
 
-console.log('Axios Base URL being used:', API_BASE_URL); 
-console.log(API_BASE_URL)
+// console.log('Axios Base URL being used:', API_BASE_URL); 
+// console.log(API_BASE_URL)
 
 export default axiosClient;
